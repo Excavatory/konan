@@ -377,31 +377,50 @@ function renderRanking(period) {
 
 // ====== Upgrade ======
 let isUpgradeOpen = false;
-function closeUpgradeModal() {
+let upgradeInterval = null;
+
+function closeUpgradeModal(e) {
+    if (e) e.preventDefault();
     const modal = document.getElementById('upgrade-modal');
     const overlay = document.getElementById('upgrade-overlay');
     if (modal) modal.classList.remove('open');
     if (overlay) overlay.classList.remove('active');
+    if (upgradeInterval) { clearInterval(upgradeInterval); upgradeInterval = null; }
     isUpgradeOpen = false;
 }
 
 function showUpgradeModal() {
-    if (isUpgradeOpen) return; // prevent double-open
+    if (isUpgradeOpen) return;
     const modal = document.getElementById('upgrade-modal'); if (!modal) return;
     isUpgradeOpen = true;
-    modal.classList.add('open'); document.getElementById('upgrade-overlay').classList.add('active');
+    modal.classList.add('open');
+    document.getElementById('upgrade-overlay').classList.add('active');
     let sec = 10;
-    const timer = document.getElementById('upgrade-timer'), prog = document.getElementById('upgrade-progress-fill'), btnS = document.getElementById('btn-start-upgrade');
-    timer.textContent = `${sec} сек`; prog.style.width = '0%'; btnS.disabled = false; btnS.textContent = 'Начать улучшение (🪙 100)';
+    const timer = document.getElementById('upgrade-timer');
+    const prog = document.getElementById('upgrade-progress-fill');
+    const btnS = document.getElementById('btn-start-upgrade');
+    timer.textContent = `${sec} сек`;
+    prog.style.width = '0%';
+    btnS.disabled = false;
+    btnS.textContent = 'Начать улучшение (🪙 100)';
     btnS.onclick = () => {
         if (playerStats.coins < 100) { btnS.textContent = 'Не хватает монет!'; return; }
-        playerStats.coins -= 100; updateHUD(); btnS.disabled = true; btnS.textContent = 'Улучшение...'; SoundFX.play('upgrade');
-        const iv = setInterval(() => {
-            sec--; timer.textContent = `${sec} сек`; prog.style.width = `${((10 - sec) / 10) * 100}%`;
+        playerStats.coins -= 100; updateHUD();
+        btnS.disabled = true; btnS.textContent = 'Улучшение...';
+        SoundFX.play('upgrade');
+        if (upgradeInterval) clearInterval(upgradeInterval);
+        upgradeInterval = setInterval(() => {
+            sec--;
+            timer.textContent = `${sec} сек`;
+            prog.style.width = `${((10 - sec) / 10) * 100}%`;
             if (sec <= 0) {
-                clearInterval(iv); timer.textContent = 'Готово! ✅'; btnS.textContent = 'Улучшено!';
-                const bl = document.querySelector('#screen-base .badge'), lv = parseInt(bl.textContent.replace('Ур. ', '')) || 3;
-                bl.textContent = `Ур. ${lv + 1}`; playerStats.prestige += 50; updateHUD(); showToast('🏠 Квартира улучшена! +50 престижа');
+                clearInterval(upgradeInterval); upgradeInterval = null;
+                timer.textContent = 'Готово! ✅'; btnS.textContent = 'Улучшено!';
+                const bl = document.querySelector('#screen-base .badge');
+                const lv = parseInt(bl.textContent.replace('Ур. ', '')) || 3;
+                bl.textContent = `Ур. ${lv + 1}`;
+                playerStats.prestige += 50; updateHUD();
+                showToast('🏠 Квартира улучшена! +50 престижа');
             }
         }, 1000);
     };
@@ -410,9 +429,20 @@ function showUpgradeModal() {
 function initUpgradeModal() {
     const btn = document.querySelector('#screen-base .btn-primary');
     if (btn) btn.addEventListener('click', showUpgradeModal);
-    // Persistent close handlers (set once, always work)
-    document.getElementById('btn-close-upgrade').addEventListener('click', closeUpgradeModal);
-    document.getElementById('upgrade-overlay').addEventListener('click', closeUpgradeModal);
+
+    const btnClose = document.getElementById('btn-close-upgrade');
+    const overlay = document.getElementById('upgrade-overlay');
+
+    // Both click AND touchend for mobile Safari
+    [btnClose, overlay].forEach(el => {
+        if (!el) return;
+        el.style.cursor = 'pointer'; // ensures mobile treats it as clickable
+        el.addEventListener('click', closeUpgradeModal);
+        el.addEventListener('touchend', (e) => {
+            e.preventDefault(); // prevent ghost click
+            closeUpgradeModal();
+        });
+    });
 }
 
 // ====== Chat ======

@@ -1280,7 +1280,16 @@ input:checked+.slider:before {
 
 /* ====== Upgrade Modal ====== */
 .upgrade-sheet {
-    z-index: 310;
+    z-index: 410;
+}
+
+#upgrade-overlay {
+    z-index: 400;
+}
+
+#btn-close-upgrade {
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
 }
 
 .upgrade-icon {
