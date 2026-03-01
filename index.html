@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 
 <body>
@@ -162,11 +162,14 @@
                     <span id="upgrade-timer">10 сек</span>
                 </div>
                 <button class="btn-primary block" id="btn-start-upgrade">Начать улучшение (🪙 100)</button>
-                <button class="btn-secondary block" id="btn-close-upgrade" style="margin-top:10px"
-                    onclick="closeUpgradeModal()">Закрыть</button>
+                <button class="btn-secondary block" id="btn-close-upgrade"
+                    style="margin-top:10px;position:relative;z-index:999"
+                    onclick="document.getElementById('upgrade-modal').classList.remove('open');document.getElementById('upgrade-overlay').classList.remove('active');isUpgradeOpen=false">Закрыть</button>
             </div>
         </div>
-        <div id="upgrade-overlay" class="sheet-overlay" onclick="closeUpgradeModal()"></div>
+        <div id="upgrade-overlay" class="sheet-overlay"
+            onclick="document.getElementById('upgrade-modal').classList.remove('open');this.classList.remove('active');isUpgradeOpen=false">
+        </div>
 
         <!-- Leaderboard Screen -->
         <main id="screen-ranking" class="screen">
@@ -298,7 +301,7 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=2"></script>
 </body>
 
 </html>
