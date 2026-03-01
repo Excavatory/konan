@@ -162,10 +162,11 @@
                     <span id="upgrade-timer">10 сек</span>
                 </div>
                 <button class="btn-primary block" id="btn-start-upgrade">Начать улучшение (🪙 100)</button>
-                <button class="btn-secondary block" id="btn-close-upgrade" style="margin-top:10px">Закрыть</button>
+                <button class="btn-secondary block" id="btn-close-upgrade" style="margin-top:10px"
+                    onclick="closeUpgradeModal()">Закрыть</button>
             </div>
         </div>
-        <div id="upgrade-overlay" class="sheet-overlay"></div>
+        <div id="upgrade-overlay" class="sheet-overlay" onclick="closeUpgradeModal()"></div>
 
         <!-- Leaderboard Screen -->
         <main id="screen-ranking" class="screen">
