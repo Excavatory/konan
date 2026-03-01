@@ -1474,8 +1474,25 @@ input:checked+.slider:before {
     cursor: pointer;
 }
 
-/* ====== Responsive (Mobile 375px) ====== */
+/* ====== Responsive (Mobile ≤480px) ====== */
 @media (max-width: 480px) {
+
+    /* --- Dev Controls: compact & non-overlapping --- */
+    .dev-controls {
+        top: auto;
+        bottom: 80px;
+        right: 8px;
+        flex-direction: row;
+        gap: 4px;
+    }
+
+    .dev-controls button {
+        padding: 4px 8px;
+        font-size: 10px;
+        border-radius: 12px;
+    }
+
+    /* --- HUD Top --- */
     .player-info {
         padding: 4px 10px 4px 4px;
         gap: 8px;
@@ -1505,17 +1522,36 @@ input:checked+.slider:before {
         font-size: 16px;
     }
 
+    /* --- HUD Bottom --- */
     .pill {
-        padding: 6px 10px;
+        padding: 5px 10px;
         font-size: 12px;
     }
 
     .btn-scanner {
-        width: 52px;
-        height: 52px;
+        width: 50px;
+        height: 50px;
         font-size: 22px;
     }
 
+    .hud-bottom-dock {
+        bottom: 12px;
+        left: 10px;
+        right: 10px;
+    }
+
+    /* --- Chat toggle: don't overlap pills --- */
+    .chat-toggle-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+        bottom: auto;
+        top: 50%;
+        left: 10px;
+        transform: translateY(-50%);
+    }
+
+    /* --- Tab Bar --- */
     .tab-icon {
         font-size: 20px;
     }
@@ -1524,32 +1560,142 @@ input:checked+.slider:before {
         font-size: 10px;
     }
 
+    .tab-bar {
+        height: calc(60px + var(--safe-bottom));
+    }
+
+    .screen {
+        height: calc(100% - 60px - var(--safe-bottom));
+    }
+
+    /* --- Event Button --- */
     .btn-event {
         width: 40px;
         height: 40px;
         font-size: 18px;
     }
 
+    /* --- Ranking --- */
+    .ranking-filters {
+        margin: 12px 0;
+    }
+
+    .filter {
+        padding: 6px 4px;
+        font-size: 13px;
+    }
+
+    .podium {
+        height: 120px;
+        gap: 6px;
+        margin: 20px 0 16px;
+    }
+
+    .podium-item {
+        width: 32%;
+        padding-top: 20px;
+    }
+
     .podium-item .avatar {
-        width: 45px;
-        height: 45px;
+        width: 42px;
+        height: 42px;
+        top: -24px;
     }
 
     .place-1 .avatar {
-        width: 55px;
-        height: 55px;
+        width: 52px;
+        height: 52px;
+        top: -28px;
+    }
+
+    .place-1 {
+        height: 120px;
+    }
+
+    .place-2 {
+        height: 95px;
+    }
+
+    .place-3 {
+        height: 80px;
     }
 
     .podium-item .name {
-        font-size: 12px;
+        font-size: 11px;
     }
 
     .podium-item .score {
         font-size: 10px;
     }
 
-    .podium {
-        height: 130px;
+    .rank-row {
+        padding: 8px 10px;
+        gap: 8px;
+    }
+
+    .rank-avatar {
+        width: 30px;
+        height: 30px;
+    }
+
+    .rank-name {
+        font-size: 13px;
+    }
+
+    .rank-score {
+        font-size: 12px;
+    }
+
+    .ranking-list {
+        gap: 6px;
+    }
+
+    /* --- Base screen --- */
+    .screen-content {
+        padding: 16px;
+        padding-bottom: 30px;
+    }
+
+    .base-view {
+        gap: 10px;
+        margin: 14px 0;
+    }
+
+    .slot {
+        height: 90px;
+    }
+
+    .slot-icon {
+        font-size: 30px;
+    }
+
+    .slot-label {
+        font-size: 11px;
+    }
+
+    .btn-primary {
+        padding: 14px;
+        font-size: 14px;
+    }
+
+    /* --- Profile --- */
+    .profile-header {
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .avatar.large {
+        width: 64px;
+        height: 64px;
+    }
+
+    .stats-grid {
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        padding: 12px;
     }
 
     .stat-value {
@@ -1560,6 +1706,38 @@ input:checked+.slider:before {
         font-size: 20px;
     }
 
+    .inv-item {
+        padding: 10px 16px;
+        font-size: 20px;
+        gap: 6px;
+    }
+
+    .inv-item span {
+        font-size: 14px;
+    }
+
+    .inventory-scroll {
+        gap: 8px;
+        padding-bottom: 10px;
+        margin-bottom: 14px;
+    }
+
+    .setting-item {
+        padding: 12px;
+        font-size: 14px;
+    }
+
+    .settings-list {
+        gap: 10px;
+        padding-bottom: 20px;
+    }
+
+    /* Profile must have extra padding so "Настройки" isn't behind tab bar */
+    #screen-profile .screen-content {
+        padding-bottom: 80px;
+    }
+
+    /* --- Splash / Onboarding --- */
     .splash-crown {
         font-size: 64px;
     }
@@ -1576,23 +1754,72 @@ input:checked+.slider:before {
         font-size: 22px;
     }
 
-    .dev-controls button {
-        padding: 3px 6px;
-        font-size: 10px;
+    .onboarding-container p {
+        font-size: 14px;
     }
 
+    .btn-onboarding-next {
+        padding: 12px 40px;
+        font-size: 15px;
+    }
+
+    .onboarding-nav {
+        margin-top: 30px;
+    }
+
+    /* --- Chat Panel --- */
     .chat-panel {
         height: 60%;
     }
 
-    .chat-toggle-btn {
-        width: 40px;
-        height: 40px;
-        font-size: 18px;
-        bottom: 85px;
+    .chat-header {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+
+    .chat-msg {
+        padding: 8px 10px;
+    }
+
+    .chat-text {
+        font-size: 13px;
+    }
+
+    /* --- Toast --- */
+    .toast-notification {
+        font-size: 12px;
+        padding: 8px 16px;
+    }
+
+    /* --- Bottom Sheet --- */
+    .bottom-sheet {
+        padding: 20px;
+        padding-bottom: calc(20px + var(--safe-bottom));
+    }
+
+    .artifact-icon-large {
+        font-size: 48px;
+    }
+
+    #artifact-title {
+        font-size: 20px;
+    }
+
+    #artifact-bonus {
+        font-size: 16px;
+    }
+
+    /* --- Upgrade Modal --- */
+    .upgrade-icon {
+        font-size: 44px;
+    }
+
+    .upgrade-cost {
+        font-size: 16px;
     }
 }
 
+/* ====== Tiny screens (≤360px) ====== */
 @media (max-width: 360px) {
     .stats-pills {
         gap: 4px;
@@ -1604,23 +1831,64 @@ input:checked+.slider:before {
     }
 
     .base-view {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        gap: 8px;
     }
 
     .slot {
-        height: 80px;
+        height: 75px;
     }
 
     .slot-icon {
-        font-size: 28px;
+        font-size: 26px;
     }
 
     .stats-grid {
-        gap: 10px;
+        gap: 8px;
     }
 
     .stat-card {
         padding: 10px;
+    }
+
+    .stat-value {
+        font-size: 18px;
+    }
+
+    .player-info {
+        padding: 3px 8px 3px 3px;
+        gap: 6px;
+    }
+
+    .avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .player-name {
+        font-size: 12px;
+    }
+
+    .filter {
+        font-size: 12px;
+        padding: 5px 2px;
+    }
+
+    .rank-row {
+        padding: 6px 8px;
+    }
+
+    .rank-avatar {
+        width: 26px;
+        height: 26px;
+    }
+
+    .inv-item {
+        padding: 8px 12px;
+        font-size: 18px;
+    }
+
+    .btn-primary {
+        padding: 12px;
+        font-size: 13px;
     }
 }
