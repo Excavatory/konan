@@ -1,15 +1,14 @@
 // ====== App State & Config ======
 const OCHAKOVO_CENTER = [55.6983, 37.4582];
-let ymap = null;
-let playerMarkerEl = null;
+let map;
+let playerMarker;
 let playerPos = [...OCHAKOVO_CENTER];
 let artifacts = [];
-let artifactElements = {};
+let artifactMarkers = {};
 let isStealthMode = false;
 let autoWalkInterval = null;
-let npcElements = [];
+let npcMarkers = [];
 
-// District boundary polygon
 const DISTRICT_BOUNDS = [
     [55.7080, 37.4280], [55.7095, 37.4420], [55.7090, 37.4580],
     [55.7060, 37.4720], [55.7030, 37.4820], [55.6980, 37.4880],
@@ -18,23 +17,18 @@ const DISTRICT_BOUNDS = [
     [55.7010, 37.4230], [55.7050, 37.4250]
 ];
 
-const playerStats = {
-    steps: 2347, coins: 580, crystals: 12, prestige: 1240,
-    collected: 87, inventory: { power: 5, build: 12, rare: 2 }
-};
+const playerStats = { steps: 2347, coins: 580, crystals: 12, prestige: 1240, collected: 87, inventory: { power: 5, build: 12, rare: 2 } };
 
 const ARTIFACT_TYPES = {
     power: { icon: '🗡️', type: 'Силовой артефакт', bonus: '+20 Атаки', class: 'type-power', color: '#ef4444', resource: 'coins', amount: 25 },
     build: { icon: '🧱', type: 'Строительный артефакт', bonus: '+15 к Строительству', class: 'type-build', color: '#f59e0b', resource: 'coins', amount: 15 },
     rare: { icon: '💎', type: 'Редкий артефакт', bonus: '+150 Престижа', class: 'type-rare', color: '#7c3aed', resource: 'crystals', amount: 1 }
 };
-
 const ARTIFACT_NAMES = {
     power: ['Очаковский клинок', 'Щит Матвеевского', 'Кулак Дорохова', 'Меч проспекта'],
     build: ['Советский кирпич', 'Панельный блок', 'Труба Очаковки', 'Плитка двора'],
     rare: ['Матвеевский кристалл', 'Ключ от МКАД', 'Печать старосты', 'Корона Очаково']
 };
-
 const NPC_PLAYERS = [
     { name: 'Дмитрий', emoji: '🧑', offset: [0.002, 0.001] },
     { name: 'Анна', emoji: '👩', offset: [-0.001, 0.003] },
@@ -42,115 +36,55 @@ const NPC_PLAYERS = [
     { name: 'Елена', emoji: '👩‍🦰', offset: [-0.002, -0.001] },
     { name: 'Артём', emoji: '🧔', offset: [0.001, -0.003] }
 ];
-
 const RANKING_DATA = {
     all: {
-        podium: [
-            { name: 'King', seed: 'King', score: 3500 },
-            { name: 'Alex', seed: 'Alex', score: 2100 },
-            { name: 'Max', seed: 'Max', score: 1800 }
-        ],
+        podium: [{ name: 'King', seed: 'King', score: 3500 }, { name: 'Alex', seed: 'Alex', score: 2100 }, { name: 'Max', seed: 'Max', score: 1800 }],
         list: [
-            { name: 'Дмитрий', score: 1650 }, { name: 'Анна', score: 1500 },
-            { name: 'Сергей', score: 1420 }, { name: 'Елена', score: 1380 },
-            { name: 'Артём', score: 1300 }, { name: 'Ольга', score: 1280 },
-            { name: 'Николай', score: 1260 }, { name: 'Игрок1', score: 1240, isPlayer: true },
-            { name: 'Мария', score: 1200 }, { name: 'Павел', score: 1150 },
-            { name: 'Ирина', score: 1100 }, { name: 'Владимир', score: 1050 },
-            { name: 'Татьяна', score: 980 }, { name: 'Алексей', score: 920 },
-            { name: 'Катерина', score: 870 }, { name: 'Роман', score: 800 },
-            { name: 'Юля', score: 750 }
+            { name: 'Дмитрий', score: 1650 }, { name: 'Анна', score: 1500 }, { name: 'Сергей', score: 1420 }, { name: 'Елена', score: 1380 },
+            { name: 'Артём', score: 1300 }, { name: 'Ольга', score: 1280 }, { name: 'Николай', score: 1260 }, { name: 'Игрок1', score: 1240, isPlayer: true },
+            { name: 'Мария', score: 1200 }, { name: 'Павел', score: 1150 }, { name: 'Ирина', score: 1100 }, { name: 'Владимир', score: 1050 },
+            { name: 'Татьяна', score: 980 }, { name: 'Алексей', score: 920 }, { name: 'Катерина', score: 870 }, { name: 'Роман', score: 800 }, { name: 'Юля', score: 750 }
         ]
     },
     week: {
-        podium: [
-            { name: 'Alex', seed: 'Alex', score: 820 },
-            { name: 'Игрок1', seed: 'King', score: 680 },
-            { name: 'Анна', seed: 'Anna2', score: 540 }
-        ],
-        list: [
-            { name: 'Сергей', score: 480 }, { name: 'Дмитрий', score: 420 },
-            { name: 'Max', score: 380 }, { name: 'Елена', score: 350 },
-            { name: 'Артём', score: 310 }, { name: 'King', score: 290 },
-            { name: 'Ольга', score: 260 }, { name: 'Николай', score: 230 },
-            { name: 'Мария', score: 200 }, { name: 'Павел', score: 170 }
-        ]
+        podium: [{ name: 'Alex', seed: 'Alex', score: 820 }, { name: 'Игрок1', seed: 'King', score: 680 }, { name: 'Анна', seed: 'Anna2', score: 540 }],
+        list: [{ name: 'Сергей', score: 480 }, { name: 'Дмитрий', score: 420 }, { name: 'Max', score: 380 }, { name: 'Елена', score: 350 },
+        { name: 'Артём', score: 310 }, { name: 'King', score: 290 }, { name: 'Ольга', score: 260 }, { name: 'Николай', score: 230 }, { name: 'Мария', score: 200 }, { name: 'Павел', score: 170 }]
     },
     today: {
-        podium: [
-            { name: 'Игрок1', seed: 'King', score: 180 },
-            { name: 'Сергей', seed: 'Sergey', score: 150 },
-            { name: 'Елена', seed: 'Elena2', score: 120 }
-        ],
-        list: [
-            { name: 'Alex', score: 100 }, { name: 'Дмитрий', score: 85 },
-            { name: 'Анна', score: 70 }, { name: 'Max', score: 55 },
-            { name: 'Артём', score: 40 }, { name: 'King', score: 30 }
-        ]
+        podium: [{ name: 'Игрок1', seed: 'King', score: 180 }, { name: 'Сергей', seed: 'Sergey', score: 150 }, { name: 'Елена', seed: 'Elena2', score: 120 }],
+        list: [{ name: 'Alex', score: 100 }, { name: 'Дмитрий', score: 85 }, { name: 'Анна', score: 70 }, { name: 'Max', score: 55 }, { name: 'Артём', score: 40 }, { name: 'King', score: 30 }]
     }
 };
 
-// ====== Sound Manager ======
+// ====== Sound ======
 const SoundFX = {
     ctx: null,
     init() { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
     play(type) {
         if (!this.ctx) this.init();
-        const ctx = this.ctx;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
+        const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+        o.connect(g); g.connect(c.destination);
         switch (type) {
-            case 'collect':
-                osc.frequency.setValueAtTime(600, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-                osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.2);
-                gain.gain.setValueAtTime(0.15, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
-                break;
-            case 'spawn':
-                osc.frequency.setValueAtTime(400, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.15);
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
-                break;
-            case 'step':
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(200, ctx.currentTime);
-                gain.gain.setValueAtTime(0.05, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
-                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.08);
-                break;
-            case 'upgrade':
-                osc.frequency.setValueAtTime(500, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(1500, ctx.currentTime + 0.3);
-                gain.gain.setValueAtTime(0.15, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
-                break;
-            case 'tab':
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, ctx.currentTime);
-                gain.gain.setValueAtTime(0.05, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.06);
-                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.06);
-                break;
+            case 'collect': o.frequency.setValueAtTime(600, c.currentTime); o.frequency.exponentialRampToValueAtTime(1200, c.currentTime + 0.1); g.gain.setValueAtTime(0.15, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.3); o.start(c.currentTime); o.stop(c.currentTime + 0.3); break;
+            case 'spawn': o.frequency.setValueAtTime(400, c.currentTime); o.frequency.exponentialRampToValueAtTime(600, c.currentTime + 0.15); g.gain.setValueAtTime(0.1, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.2); o.start(c.currentTime); o.stop(c.currentTime + 0.2); break;
+            case 'step': o.type = 'triangle'; o.frequency.setValueAtTime(200, c.currentTime); g.gain.setValueAtTime(0.05, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.08); o.start(c.currentTime); o.stop(c.currentTime + 0.08); break;
+            case 'upgrade': o.frequency.setValueAtTime(500, c.currentTime); o.frequency.exponentialRampToValueAtTime(1500, c.currentTime + 0.3); g.gain.setValueAtTime(0.15, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.4); o.start(c.currentTime); o.stop(c.currentTime + 0.4); break;
+            case 'tab': o.type = 'sine'; o.frequency.setValueAtTime(800, c.currentTime); g.gain.setValueAtTime(0.05, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.06); o.start(c.currentTime); o.stop(c.currentTime + 0.06); break;
         }
     }
 };
 
-// ====== DOM Elements ======
+// ====== DOM ======
 const tabs = document.querySelectorAll('.tab');
 const screens = document.querySelectorAll('.screen');
 const artifactSheet = document.getElementById('artifact-sheet');
 const sheetOverlay = document.getElementById('sheet-overlay');
 
-// ====== Initialization ======
-async function initApp() {
+// ====== Init ======
+function initApp() {
     initSplash();
-    await initMap();
+    initMap();
     initNavigation();
     initSimulation();
     initBottomSheet();
@@ -168,325 +102,182 @@ function initNavigation() {
         tab.addEventListener('click', () => {
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            const targetId = tab.getAttribute('data-target');
-            screens.forEach(s => {
-                s.classList.remove('active');
-                if (s.id === targetId) s.classList.add('active');
-            });
+            const tid = tab.dataset.target;
+            screens.forEach(s => { s.classList.remove('active'); if (s.id === tid) s.classList.add('active'); });
             SoundFX.play('tab');
-            if (targetId === 'screen-profile') updateProfileStats();
+            if (tid === 'screen-map' && map) setTimeout(() => map.invalidateSize(), 150);
+            if (tid === 'screen-profile') updateProfileStats();
         });
     });
 }
 
-// ====== Yandex Map ======
-async function initMap() {
-    await ymaps3.ready;
+// ====== Leaflet Map with Yandex Tiles ======
+function initMap() {
+    map = L.map('map', { zoomControl: false, attributionControl: false }).setView(OCHAKOVO_CENTER, 15);
 
-    const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapMarker, YMapFeature } = ymaps3;
+    // Yandex Map tiles via proxy (dark style)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19, subdomains: 'abcd'
+    }).addTo(map);
 
-    // Create map with dark scheme
-    ymap = new YMap(document.getElementById('map'), {
-        location: {
-            center: [OCHAKOVO_CENTER[1], OCHAKOVO_CENTER[0]], // Yandex uses [lng, lat]
-            zoom: 15
-        }
-    });
-
-    // Dark scheme layer
-    ymap.addChild(new YMapDefaultSchemeLayer({
-        theme: 'dark'
-    }));
-    ymap.addChild(new YMapDefaultFeaturesLayer());
+    // Yandex satellite overlay (optional, adds realism)
+    // Uncomment below for Yandex Satellite tiles:
+    // L.tileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}', {
+    //     subdomains: '1234', maxZoom: 19, opacity: 0.3
+    // }).addTo(map);
 
     // District boundary
-    const boundaryCoords = DISTRICT_BOUNDS.map(c => [c[1], c[0]]); // convert to [lng, lat]
-    boundaryCoords.push(boundaryCoords[0]); // close polygon
-    const boundary = new YMapFeature({
-        geometry: {
-            type: 'Polygon',
-            coordinates: [boundaryCoords]
-        },
-        style: {
-            stroke: [{ color: '#f5c84299', width: 2, dash: [8, 6] }],
-            fill: '#f5c84210'
-        }
-    });
-    ymap.addChild(boundary);
+    L.polygon(DISTRICT_BOUNDS, { color: '#f5c842', weight: 2, opacity: 0.6, fillColor: '#f5c842', fillOpacity: 0.04, dashArray: '8, 6' }).addTo(map);
 
     // Player marker
-    const playerEl = document.createElement('div');
-    playerEl.className = 'player-marker';
-    playerEl.textContent = '🏃‍♂️';
-    playerMarkerEl = new YMapMarker(
-        { coordinates: [playerPos[1], playerPos[0]] },
-        playerEl
-    );
-    ymap.addChild(playerMarkerEl);
+    playerMarker = L.marker(playerPos, {
+        icon: L.divIcon({ className: 'custom-icon', html: '<div class="player-marker">🏃‍♂️</div>', iconSize: [32, 32], iconAnchor: [16, 32] }),
+        zIndexOffset: 1000
+    }).addTo(map);
 
-    // NPC players
     spawnNPCs();
-
-    // Initial artifacts
-    spawnArtifact();
-    spawnArtifact();
-    spawnArtifact();
+    spawnArtifact(); spawnArtifact(); spawnArtifact();
 }
 
-// Helper: get distance between two [lat,lng] points in meters
-function getDistanceMeters(pos1, pos2) {
-    const R = 6371000;
-    const dLat = (pos2[0] - pos1[0]) * Math.PI / 180;
-    const dLng = (pos2[1] - pos1[1]) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) ** 2 +
-        Math.cos(pos1[0] * Math.PI / 180) * Math.cos(pos2[0] * Math.PI / 180) *
-        Math.sin(dLng / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-// ====== NPC Players ======
+// ====== NPCs ======
 function spawnNPCs() {
-    if (!ymaps3) return;
-    const { YMapMarker } = ymaps3;
-
     NPC_PLAYERS.forEach(npc => {
         const pos = [OCHAKOVO_CENTER[0] + npc.offset[0], OCHAKOVO_CENTER[1] + npc.offset[1]];
-        const el = document.createElement('div');
-        el.className = 'npc-marker';
-        el.title = npc.name;
-        el.textContent = npc.emoji;
-
-        const marker = new YMapMarker(
-            { coordinates: [pos[1], pos[0]] },
-            el
-        );
-        ymap.addChild(marker);
-        npcElements.push({ marker, el, pos: [...pos], npc });
+        const m = L.marker(pos, {
+            icon: L.divIcon({ className: 'custom-icon', html: `<div class="npc-marker" title="${npc.name}">${npc.emoji}</div>`, iconSize: [28, 28], iconAnchor: [14, 28] })
+        }).addTo(map);
+        npcMarkers.push({ marker: m, pos: [...pos], npc });
     });
-
     setInterval(moveNPCs, 3000);
 }
-
 function moveNPCs() {
     if (isStealthMode) return;
-    npcElements.forEach(item => {
-        item.pos[0] += (Math.random() - 0.5) * 0.0005;
-        item.pos[1] += (Math.random() - 0.5) * 0.0005;
-        item.marker.update({ coordinates: [item.pos[1], item.pos[0]] });
-    });
+    npcMarkers.forEach(n => { n.pos[0] += (Math.random() - 0.5) * 0.0005; n.pos[1] += (Math.random() - 0.5) * 0.0005; n.marker.setLatLng(n.pos); });
 }
 
-// ====== Mechanics / Simulation ======
+// ====== Simulation ======
 function initSimulation() {
     document.getElementById('dev-sim-step').addEventListener('click', simulateMovement);
     document.getElementById('dev-spawn-art').addEventListener('click', spawnArtifact);
     document.getElementById('dev-auto-walk').addEventListener('click', toggleAutoWalk);
 }
-
 function toggleAutoWalk() {
     const btn = document.getElementById('dev-auto-walk');
-    if (autoWalkInterval) {
-        clearInterval(autoWalkInterval);
-        autoWalkInterval = null;
-        btn.textContent = '▶️ Авто';
-        btn.classList.remove('active-btn');
-    } else {
-        autoWalkInterval = setInterval(simulateMovement, 1500);
-        btn.textContent = '⏸️ Стоп';
-        btn.classList.add('active-btn');
-    }
+    if (autoWalkInterval) { clearInterval(autoWalkInterval); autoWalkInterval = null; btn.textContent = '▶️ Авто'; btn.classList.remove('active-btn'); }
+    else { autoWalkInterval = setInterval(simulateMovement, 1500); btn.textContent = '⏸️ Стоп'; btn.classList.add('active-btn'); }
 }
-
 function simulateMovement() {
     playerPos[0] += (Math.random() - 0.5) * 0.0008;
     playerPos[1] += (Math.random() - 0.5) * 0.0008;
-
-    playerMarkerEl.update({ coordinates: [playerPos[1], playerPos[0]] });
-    ymap.setLocation({ center: [playerPos[1], playerPos[0]], duration: 300 });
-
+    playerMarker.setLatLng(playerPos);
+    map.panTo(playerPos, { animate: true });
     playerStats.steps += Math.floor(Math.random() * 30) + 10;
     playerStats.coins += Math.floor(Math.random() * 3);
     SoundFX.play('step');
     updateHUD();
     checkDistanceToArtifacts();
-
     if (Math.random() < 0.15) spawnArtifact();
 }
-
 function spawnArtifact() {
-    if (!ymaps3 || !ymap) return;
-    const { YMapMarker } = ymaps3;
-
-    const lat = playerPos[0] + (Math.random() - 0.5) * 0.004;
-    const lng = playerPos[1] + (Math.random() - 0.5) * 0.004;
-
-    const types = Object.keys(ARTIFACT_TYPES);
-    const typeKey = types[Math.floor(Math.random() * types.length)];
+    const lat = playerPos[0] + (Math.random() - 0.5) * 0.004, lng = playerPos[1] + (Math.random() - 0.5) * 0.004;
+    const types = Object.keys(ARTIFACT_TYPES), typeKey = types[Math.floor(Math.random() * types.length)];
     const typeObj = { ...ARTIFACT_TYPES[typeKey] };
-    const names = ARTIFACT_NAMES[typeKey];
-    typeObj.name = names[Math.floor(Math.random() * names.length)];
-
+    typeObj.name = ARTIFACT_NAMES[typeKey][Math.floor(Math.random() * ARTIFACT_NAMES[typeKey].length)];
     const id = Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-
-    const el = document.createElement('div');
-    el.className = `artifact-marker ${typeObj.class}`;
-    el.textContent = typeObj.icon;
-    el.addEventListener('click', () => {
-        openArtifactSheet({ id, coords: [lat, lng], typeData: typeObj, typeKey });
-    });
-
-    const marker = new YMapMarker(
-        { coordinates: [lng, lat] },
-        el
-    );
-    ymap.addChild(marker);
-
+    const marker = L.marker([lat, lng], {
+        icon: L.divIcon({ className: 'custom-icon', html: `<div class="artifact-marker ${typeObj.class}">${typeObj.icon}</div>`, iconSize: [28, 28], iconAnchor: [14, 28] })
+    }).addTo(map);
+    marker.on('click', () => openArtifactSheet({ id, coords: [lat, lng], typeData: typeObj, typeKey }));
     artifacts.push({ id, coords: [lat, lng], typeData: typeObj, typeKey });
-    artifactElements[id] = { marker, el };
-
-    const eventBtn = document.getElementById('btn-event');
-    eventBtn.classList.add('blinking');
-    setTimeout(() => eventBtn.classList.remove('blinking'), 5000);
-
+    artifactMarkers[id] = marker;
+    document.getElementById('btn-event').classList.add('blinking');
+    setTimeout(() => document.getElementById('btn-event').classList.remove('blinking'), 5000);
     SoundFX.play('spawn');
     if (navigator.vibrate) navigator.vibrate(100);
 }
-
 function checkDistanceToArtifacts() {
-    artifacts.forEach(art => {
-        const distance = getDistanceMeters(playerPos, art.coords);
-        if (artifactSheet.classList.contains('open') && currentOpenArtifact === art.id) {
-            updateDistanceUI(distance);
-        }
-        if (distance < 10 && !artifactSheet.classList.contains('open')) {
-            autoCollect(art);
-        }
+    artifacts.forEach(a => {
+        const d = L.latLng(playerPos).distanceTo(L.latLng(a.coords));
+        if (artifactSheet.classList.contains('open') && currentOpenArtifact === a.id) updateDistanceUI(d);
+        if (d < 10 && !artifactSheet.classList.contains('open')) { currentOpenArtifact = a.id; doCollect(); showToast(`${a.typeData.icon} ${a.typeData.name} собран!`); }
     });
-}
-
-function autoCollect(art) {
-    currentOpenArtifact = art.id;
-    doCollect();
-    showToast(`${art.typeData.icon} ${art.typeData.name} собран!`);
 }
 
 // ====== Bottom Sheet ======
 let currentOpenArtifact = null;
-
 function initBottomSheet() {
     sheetOverlay.addEventListener('click', closeArtifactSheet);
-    let startY = 0;
-    artifactSheet.addEventListener('touchstart', e => { startY = e.touches[0].clientY; });
-    artifactSheet.addEventListener('touchmove', e => {
-        const d = e.touches[0].clientY - startY;
-        if (d > 0) artifactSheet.style.transform = `translateY(${d}px)`;
-    });
-    artifactSheet.addEventListener('touchend', e => {
-        artifactSheet.style.transform = '';
-        if (e.changedTouches[0].clientY - startY > 50) closeArtifactSheet();
-    });
-    document.getElementById('btn-collect').addEventListener('click', () => {
-        if (!document.getElementById('btn-collect').classList.contains('disabled')) doCollect();
-    });
+    let sy = 0;
+    artifactSheet.addEventListener('touchstart', e => { sy = e.touches[0].clientY; });
+    artifactSheet.addEventListener('touchmove', e => { const d = e.touches[0].clientY - sy; if (d > 0) artifactSheet.style.transform = `translateY(${d}px)`; });
+    artifactSheet.addEventListener('touchend', e => { artifactSheet.style.transform = ''; if (e.changedTouches[0].clientY - sy > 50) closeArtifactSheet(); });
+    document.getElementById('btn-collect').addEventListener('click', () => { if (!document.getElementById('btn-collect').classList.contains('disabled')) doCollect(); });
 }
-
 function openArtifactSheet(info) {
     currentOpenArtifact = info.id;
-    const distance = getDistanceMeters(playerPos, info.coords);
+    const d = L.latLng(playerPos).distanceTo(L.latLng(info.coords));
     document.getElementById('artifact-icon').textContent = info.typeData.icon;
     document.getElementById('artifact-icon').className = 'artifact-icon-large spin';
     document.getElementById('artifact-title').textContent = info.typeData.name;
     document.getElementById('artifact-type').textContent = info.typeData.type;
     document.getElementById('artifact-type').style.color = info.typeData.color;
     document.getElementById('artifact-bonus').textContent = info.typeData.bonus;
-    updateDistanceUI(distance);
+    updateDistanceUI(d);
     artifactSheet.classList.add('open');
     sheetOverlay.classList.add('active');
 }
-
-function updateDistanceUI(distance) {
-    const distEl = document.getElementById('artifact-distance');
+function updateDistanceUI(d) {
+    document.getElementById('artifact-distance').innerHTML = `Расстояние: <span>${Math.round(d)} м</span>`;
     const btn = document.getElementById('btn-collect');
-    distEl.innerHTML = `Расстояние: <span>${Math.round(distance)} м</span>`;
-    if (distance < 20) {
-        btn.classList.remove('disabled');
-        btn.textContent = 'Подобрать';
-    } else {
-        btn.classList.add('disabled');
-        btn.textContent = 'Подойдите ближе (< 20м)';
-    }
+    if (d < 20) { btn.classList.remove('disabled'); btn.textContent = 'Подобрать'; }
+    else { btn.classList.add('disabled'); btn.textContent = 'Подойдите ближе (< 20м)'; }
 }
-
 function closeArtifactSheet() {
-    artifactSheet.classList.remove('open');
-    sheetOverlay.classList.remove('active');
+    artifactSheet.classList.remove('open'); sheetOverlay.classList.remove('active');
     setTimeout(() => { currentOpenArtifact = null; }, 300);
 }
-
 function doCollect() {
     if (!currentOpenArtifact) return;
-    const artData = artifacts.find(a => a.id === currentOpenArtifact);
-
-    const artEl = artifactElements[currentOpenArtifact];
-    if (artEl) {
-        // Particle effect from the marker element position
-        const rect = artEl.el.getBoundingClientRect();
-        spawnParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, artData ? artData.typeData.color : '#fff');
-        ymap.removeChild(artEl.marker);
-        delete artifactElements[currentOpenArtifact];
+    const art = artifacts.find(a => a.id === currentOpenArtifact);
+    const m = artifactMarkers[currentOpenArtifact];
+    if (m) {
+        const pt = map.latLngToContainerPoint(m.getLatLng());
+        spawnParticles(pt.x, pt.y, art ? art.typeData.color : '#fff');
+        map.removeLayer(m); delete artifactMarkers[currentOpenArtifact];
     }
-
     artifacts = artifacts.filter(a => a.id !== currentOpenArtifact);
-
-    if (artData) {
-        playerStats[artData.typeData.resource] += artData.typeData.amount;
-        const prestigeGain = artData.typeKey === 'rare' ? 150 : artData.typeKey === 'power' ? 30 : 20;
-        playerStats.prestige += prestigeGain;
+    if (art) {
+        playerStats[art.typeData.resource] += art.typeData.amount;
+        playerStats.prestige += art.typeKey === 'rare' ? 150 : art.typeKey === 'power' ? 30 : 20;
         playerStats.collected += 1;
-        playerStats.inventory[artData.typeKey] = (playerStats.inventory[artData.typeKey] || 0) + 1;
+        playerStats.inventory[art.typeKey] = (playerStats.inventory[art.typeKey] || 0) + 1;
     }
-
-    SoundFX.play('collect');
-    updateHUD();
-    const dock = document.querySelector('.hud-bottom-dock');
-    dock.classList.add('flash');
-    setTimeout(() => dock.classList.remove('flash'), 500);
+    SoundFX.play('collect'); updateHUD();
+    document.querySelector('.hud-bottom-dock').classList.add('flash');
+    setTimeout(() => document.querySelector('.hud-bottom-dock').classList.remove('flash'), 500);
     closeArtifactSheet();
 }
 
 // ====== Particles ======
 function spawnParticles(x, y, color) {
-    const container = document.getElementById('particles-container');
-    if (!container) return;
+    const c = document.getElementById('particles-container'); if (!c) return;
     for (let i = 0; i < 12; i++) {
-        const p = document.createElement('div');
-        p.className = 'particle';
-        p.style.left = x + 'px';
-        p.style.top = y + 'px';
-        p.style.background = color;
-        const angle = (Math.PI * 2 * i) / 12;
-        const dist = 40 + Math.random() * 60;
-        p.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
-        p.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
-        container.appendChild(p);
-        setTimeout(() => p.remove(), 700);
+        const p = document.createElement('div'); p.className = 'particle';
+        p.style.left = x + 'px'; p.style.top = y + 'px'; p.style.background = color;
+        const a = (Math.PI * 2 * i) / 12, d = 40 + Math.random() * 60;
+        p.style.setProperty('--tx', Math.cos(a) * d + 'px'); p.style.setProperty('--ty', Math.sin(a) * d + 'px');
+        c.appendChild(p); setTimeout(() => p.remove(), 700);
     }
 }
 
 // ====== Toast ======
 function showToast(msg) {
-    const toast = document.createElement('div');
-    toast.className = 'toast-notification';
-    toast.textContent = msg;
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('show'));
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 2000);
+    const t = document.createElement('div'); t.className = 'toast-notification'; t.textContent = msg;
+    document.body.appendChild(t); requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2000);
 }
 
-// ====== HUD Update ======
+// ====== HUD ======
 function updateHUD() {
     document.querySelector('.pill.steps').textContent = `🦶 ${playerStats.steps.toLocaleString('ru')}`;
     document.querySelector('.pill.coins').textContent = `🪙 ${playerStats.coins}`;
@@ -494,30 +285,16 @@ function updateHUD() {
     document.querySelector('.prestige').textContent = `⭐ ${playerStats.prestige.toLocaleString('ru')}`;
 }
 
-// ====== Profile Stats ======
+// ====== Profile ======
 function updateProfileStats() {
-    const vals = document.querySelectorAll('.stat-value');
-    if (vals.length >= 4) {
-        vals[0].textContent = playerStats.steps.toLocaleString('ru');
-        vals[1].textContent = playerStats.prestige.toLocaleString('ru');
-        vals[2].textContent = playerStats.collected;
-        vals[3].textContent = `#${computePlayerRank()}`;
-    }
-    const invScroll = document.querySelector('.inventory-scroll');
-    if (invScroll) {
-        invScroll.innerHTML = `
-            <div class="inv-item"><span class="inv-emoji">🗡️</span> <span>x${playerStats.inventory.power}</span></div>
-            <div class="inv-item"><span class="inv-emoji">🧱</span> <span>x${playerStats.inventory.build}</span></div>
-            <div class="inv-item"><span class="inv-emoji">💎</span> <span>x${playerStats.inventory.rare}</span></div>
-            <div class="inv-item"><span class="inv-emoji">🪙</span> <span>${playerStats.coins}</span></div>
-        `;
-    }
+    const v = document.querySelectorAll('.stat-value');
+    if (v.length >= 4) { v[0].textContent = playerStats.steps.toLocaleString('ru'); v[1].textContent = playerStats.prestige.toLocaleString('ru'); v[2].textContent = playerStats.collected; v[3].textContent = `#${computePlayerRank()}`; }
+    const inv = document.querySelector('.inventory-scroll');
+    if (inv) inv.innerHTML = `<div class="inv-item">🗡️ <span>x${playerStats.inventory.power}</span></div><div class="inv-item">🧱 <span>x${playerStats.inventory.build}</span></div><div class="inv-item">💎 <span>x${playerStats.inventory.rare}</span></div><div class="inv-item">🪙 <span>${playerStats.coins}</span></div>`;
 }
-
 function computePlayerRank() {
-    const allScores = RANKING_DATA.all.podium.map(p => p.score)
-        .concat(RANKING_DATA.all.list.map(p => p.score));
-    return allScores.filter(s => s > playerStats.prestige).length + 1;
+    const all = RANKING_DATA.all.podium.map(p => p.score).concat(RANKING_DATA.all.list.map(p => p.score));
+    return all.filter(s => s > playerStats.prestige).length + 1;
 }
 
 // ====== Stealth ======
@@ -527,194 +304,96 @@ function initStealth() {
         isStealthMode = !isStealthMode;
         btn.textContent = isStealthMode ? '🙈' : '👁';
         btn.classList.toggle('stealth-active', isStealthMode);
-        npcElements.forEach(item => {
-            item.el.style.opacity = isStealthMode ? '0.2' : '0.7';
-        });
-        const profileToggle = document.querySelector('.setting-item input[type="checkbox"]');
-        if (profileToggle) profileToggle.checked = isStealthMode;
+        npcMarkers.forEach(n => n.marker.setOpacity(isStealthMode ? 0.2 : 1));
+        const pt = document.querySelector('.setting-item input[type="checkbox"]');
+        if (pt) pt.checked = isStealthMode;
     });
-    const profileToggle = document.querySelector('.setting-item input[type="checkbox"]');
-    if (profileToggle) {
-        profileToggle.addEventListener('change', e => {
-            isStealthMode = e.target.checked;
-            const btn2 = document.querySelector('.btn-stealth');
-            btn2.textContent = isStealthMode ? '🙈' : '👁';
-            btn2.classList.toggle('stealth-active', isStealthMode);
-        });
-    }
+    const pt = document.querySelector('.setting-item input[type="checkbox"]');
+    if (pt) pt.addEventListener('change', e => {
+        isStealthMode = e.target.checked;
+        document.querySelector('.btn-stealth').textContent = isStealthMode ? '🙈' : '👁';
+        document.querySelector('.btn-stealth').classList.toggle('stealth-active', isStealthMode);
+    });
 }
 
-// ====== Ranking Filters ======
+// ====== Ranking ======
 function initRankingFilters() {
-    const filters = document.querySelectorAll('.filter');
-    const keys = ['all', 'week', 'today'];
-    filters.forEach((btn, i) => {
-        btn.addEventListener('click', () => {
-            filters.forEach(f => f.classList.remove('active'));
-            btn.classList.add('active');
-            renderRanking(keys[i]);
-            SoundFX.play('tab');
-        });
-    });
+    const f = document.querySelectorAll('.filter'), keys = ['all', 'week', 'today'];
+    f.forEach((btn, i) => btn.addEventListener('click', () => { f.forEach(b => b.classList.remove('active')); btn.classList.add('active'); renderRanking(keys[i]); SoundFX.play('tab'); }));
 }
-
 function renderRanking(period) {
     const data = RANKING_DATA[period];
-    const podiumItems = document.querySelectorAll('.podium-item');
-    const podiumOrder = [1, 0, 2];
-    podiumItems.forEach((item, idx) => {
-        const p = data.podium[podiumOrder[idx]];
-        if (p) {
-            item.querySelector('.avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.seed}`;
-            item.querySelector('.name').textContent = p.name;
-            item.querySelector('.score').textContent = `⭐ ${p.score.toLocaleString('ru')}`;
-            item.style.display = '';
-        } else {
-            item.style.display = 'none';
-        }
+    const pi = document.querySelectorAll('.podium-item'), po = [1, 0, 2];
+    pi.forEach((item, idx) => {
+        const p = data.podium[po[idx]];
+        if (p) { item.querySelector('.avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.seed}`; item.querySelector('.name').textContent = p.name; item.querySelector('.score').textContent = `⭐ ${p.score.toLocaleString('ru')}`; item.style.display = ''; }
+        else item.style.display = 'none';
     });
     const list = document.querySelector('.ranking-list');
     if (!list || !data.list) return;
-    list.innerHTML = data.list.map((p, i) => {
-        const cls = p.isPlayer ? 'is-player' : '';
-        return `<div class="rank-row ${cls}">
-            <span class="rank-place">${i + 4}</span>
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}" class="rank-avatar" alt="">
-            <span class="rank-name">${p.name}</span>
-            <span class="rank-score">⭐ ${p.score.toLocaleString('ru')}</span>
-        </div>`;
-    }).join('');
+    list.innerHTML = data.list.map((p, i) => `<div class="rank-row ${p.isPlayer ? 'is-player' : ''}"><span class="rank-place">${i + 4}</span><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}" class="rank-avatar" alt=""><span class="rank-name">${p.name}</span><span class="rank-score">⭐ ${p.score.toLocaleString('ru')}</span></div>`).join('');
 }
 
-// ====== Upgrade Modal ======
+// ====== Upgrade ======
 function initUpgradeModal() {
     const btn = document.querySelector('#screen-base .btn-primary');
     if (btn) btn.addEventListener('click', showUpgradeModal);
 }
-
 function showUpgradeModal() {
-    const modal = document.getElementById('upgrade-modal');
-    if (!modal) return;
-    modal.classList.add('open');
-    document.getElementById('upgrade-overlay').classList.add('active');
-
-    let seconds = 10;
-    const timerEl = document.getElementById('upgrade-timer');
-    const progressEl = document.getElementById('upgrade-progress-fill');
-    const btnStart = document.getElementById('btn-start-upgrade');
-    const btnClose = document.getElementById('btn-close-upgrade');
-
-    timerEl.textContent = `${seconds} сек`;
-    progressEl.style.width = '0%';
-    btnStart.disabled = false;
-    btnStart.textContent = 'Начать улучшение (🪙 100)';
-
-    btnStart.onclick = () => {
-        if (playerStats.coins < 100) { btnStart.textContent = 'Не хватает монет!'; return; }
-        playerStats.coins -= 100;
-        updateHUD();
-        btnStart.disabled = true;
-        btnStart.textContent = 'Улучшение...';
-        SoundFX.play('upgrade');
-        const interval = setInterval(() => {
-            seconds--;
-            timerEl.textContent = `${seconds} сек`;
-            progressEl.style.width = `${((10 - seconds) / 10) * 100}%`;
-            if (seconds <= 0) {
-                clearInterval(interval);
-                timerEl.textContent = 'Готово! ✅';
-                btnStart.textContent = 'Улучшено!';
-                const baseLvl = document.querySelector('#screen-base .badge');
-                const lv = parseInt(baseLvl.textContent.replace('Ур. ', '')) || 3;
-                baseLvl.textContent = `Ур. ${lv + 1}`;
-                playerStats.prestige += 50;
-                updateHUD();
-                showToast('🏠 Квартира улучшена! +50 престижа');
+    const modal = document.getElementById('upgrade-modal'); if (!modal) return;
+    modal.classList.add('open'); document.getElementById('upgrade-overlay').classList.add('active');
+    let sec = 10;
+    const timer = document.getElementById('upgrade-timer'), prog = document.getElementById('upgrade-progress-fill'), btnS = document.getElementById('btn-start-upgrade'), btnC = document.getElementById('btn-close-upgrade');
+    timer.textContent = `${sec} сек`; prog.style.width = '0%'; btnS.disabled = false; btnS.textContent = 'Начать улучшение (🪙 100)';
+    btnS.onclick = () => {
+        if (playerStats.coins < 100) { btnS.textContent = 'Не хватает монет!'; return; }
+        playerStats.coins -= 100; updateHUD(); btnS.disabled = true; btnS.textContent = 'Улучшение...'; SoundFX.play('upgrade');
+        const iv = setInterval(() => {
+            sec--; timer.textContent = `${sec} сек`; prog.style.width = `${((10 - sec) / 10) * 100}%`;
+            if (sec <= 0) {
+                clearInterval(iv); timer.textContent = 'Готово! ✅'; btnS.textContent = 'Улучшено!';
+                const bl = document.querySelector('#screen-base .badge'), lv = parseInt(bl.textContent.replace('Ур. ', '')) || 3;
+                bl.textContent = `Ур. ${lv + 1}`; playerStats.prestige += 50; updateHUD(); showToast('🏠 Квартира улучшена! +50 престижа');
             }
         }, 1000);
     };
-    const closeModal = () => {
-        modal.classList.remove('open');
-        document.getElementById('upgrade-overlay').classList.remove('active');
-    };
-    btnClose.onclick = closeModal;
-    document.getElementById('upgrade-overlay').onclick = closeModal;
+    const close = () => { modal.classList.remove('open'); document.getElementById('upgrade-overlay').classList.remove('active'); };
+    btnC.onclick = close; document.getElementById('upgrade-overlay').onclick = close;
 }
 
 // ====== Chat ======
 function initChat() {
-    const chatToggle = document.getElementById('chat-toggle');
-    const chatPanel = document.getElementById('chat-panel');
-    const chatClose = document.getElementById('chat-close');
-    const chatInput = document.getElementById('chat-input');
-    const chatSend = document.getElementById('chat-send');
-    if (!chatToggle) return;
-
-    chatToggle.addEventListener('click', () => chatPanel.classList.toggle('open'));
-    chatClose.addEventListener('click', () => chatPanel.classList.remove('open'));
-
-    [
-        { name: 'Дмитрий', text: 'Кто-нибудь видел редкий артефакт у прудов?', time: '20:15' },
-        { name: 'Анна', text: 'Да, я нашла Корону Очаково!', time: '20:18' },
-        { name: 'Сергей', text: 'Круто! Я около МЦД, тут куча строительных', time: '20:20' },
-        { name: 'Елена', text: 'Кто хочет в клан? Набираем людей 💪', time: '20:24' },
-    ].forEach(m => addChatMessage(m.name, m.text, m.time, false));
-
-    const sendMsg = () => {
-        const text = chatInput.value.trim();
-        if (!text) return;
-        const now = new Date();
-        addChatMessage('Игрок1', text, `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`, true);
-        chatInput.value = '';
-        document.getElementById('chat-messages').scrollTop = 99999;
-    };
-    chatSend.addEventListener('click', sendMsg);
-    chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMsg(); });
+    const toggle = document.getElementById('chat-toggle'), panel = document.getElementById('chat-panel');
+    if (!toggle) return;
+    toggle.addEventListener('click', () => panel.classList.toggle('open'));
+    document.getElementById('chat-close').addEventListener('click', () => panel.classList.remove('open'));
+    [{ name: 'Дмитрий', text: 'Кто-нибудь видел редкий артефакт у прудов?', time: '20:15' }, { name: 'Анна', text: 'Да, я нашла Корону Очаково!', time: '20:18' }, { name: 'Сергей', text: 'Круто! Я около МЦД, тут куча строительных', time: '20:20' }, { name: 'Елена', text: 'Кто хочет в клан? Набираем людей 💪', time: '20:24' }].forEach(m => addChatMsg(m.name, m.text, m.time, false));
+    const send = () => { const t = document.getElementById('chat-input').value.trim(); if (!t) return; const n = new Date(); addChatMsg('Игрок1', t, `${n.getHours()}:${String(n.getMinutes()).padStart(2, '0')}`, true); document.getElementById('chat-input').value = ''; document.getElementById('chat-messages').scrollTop = 99999; };
+    document.getElementById('chat-send').addEventListener('click', send);
+    document.getElementById('chat-input').addEventListener('keypress', e => { if (e.key === 'Enter') send(); });
 }
-
-function addChatMessage(name, text, time, isOwn) {
-    const el = document.getElementById('chat-messages');
-    if (!el) return;
-    const div = document.createElement('div');
-    div.className = `chat-msg ${isOwn ? 'own' : ''}`;
-    div.innerHTML = `<div class="chat-msg-header"><span class="chat-name">${name}</span><span class="chat-time">${time}</span></div><div class="chat-text">${text}</div>`;
-    el.appendChild(div);
+function addChatMsg(name, text, time, own) {
+    const el = document.getElementById('chat-messages'); if (!el) return;
+    const d = document.createElement('div'); d.className = `chat-msg ${own ? 'own' : ''}`;
+    d.innerHTML = `<div class="chat-msg-header"><span class="chat-name">${name}</span><span class="chat-time">${time}</span></div><div class="chat-text">${text}</div>`;
+    el.appendChild(d);
 }
 
 // ====== Splash & Onboarding ======
 function initSplash() {
-    const splash = document.getElementById('screen-splash');
-    if (!splash) return;
-    const bar = splash.querySelector('.splash-progress-fill');
+    const s = document.getElementById('screen-splash'); if (!s) return;
+    const bar = s.querySelector('.splash-progress-fill');
     if (bar) setTimeout(() => bar.style.width = '100%', 100);
-    setTimeout(() => {
-        splash.classList.add('fade-out');
-        setTimeout(() => { splash.style.display = 'none'; showOnboarding(); }, 500);
-    }, 2500);
+    setTimeout(() => { s.classList.add('fade-out'); setTimeout(() => { s.style.display = 'none'; showOnboarding(); }, 500); }, 2500);
 }
-
 function showOnboarding() {
-    const ob = document.getElementById('screen-onboarding');
-    if (!ob) return;
+    const ob = document.getElementById('screen-onboarding'); if (!ob) return;
     ob.style.display = 'flex';
     let cur = 0;
-    const slides = ob.querySelectorAll('.onboarding-slide');
-    const dots = ob.querySelectorAll('.dot');
-    const btn = ob.querySelector('.btn-onboarding-next');
-    const show = idx => {
-        slides.forEach((s, i) => s.classList.toggle('active', i === idx));
-        dots.forEach((d, i) => d.classList.toggle('active', i === idx));
-        btn.textContent = idx === slides.length - 1 ? 'Начать' : 'Далее';
-    };
+    const slides = ob.querySelectorAll('.onboarding-slide'), dots = ob.querySelectorAll('.dot'), btn = ob.querySelector('.btn-onboarding-next');
+    const show = i => { slides.forEach((s, j) => s.classList.toggle('active', j === i)); dots.forEach((d, j) => d.classList.toggle('active', j === i)); btn.textContent = i === slides.length - 1 ? 'Начать' : 'Далее'; };
     show(0);
-    btn.addEventListener('click', () => {
-        cur++;
-        if (cur >= slides.length) {
-            ob.classList.add('fade-out');
-            setTimeout(() => { ob.style.display = 'none'; }, 500);
-        } else show(cur);
-    });
+    btn.addEventListener('click', () => { cur++; if (cur >= slides.length) { ob.classList.add('fade-out'); setTimeout(() => { ob.style.display = 'none'; }, 500); } else show(cur); });
 }
 
-// Start
 document.addEventListener('DOMContentLoaded', initApp);
