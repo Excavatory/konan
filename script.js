@@ -376,15 +376,22 @@ function renderRanking(period) {
 }
 
 // ====== Upgrade ======
-function initUpgradeModal() {
-    const btn = document.querySelector('#screen-base .btn-primary');
-    if (btn) btn.addEventListener('click', showUpgradeModal);
+let isUpgradeOpen = false;
+function closeUpgradeModal() {
+    const modal = document.getElementById('upgrade-modal');
+    const overlay = document.getElementById('upgrade-overlay');
+    if (modal) modal.classList.remove('open');
+    if (overlay) overlay.classList.remove('active');
+    isUpgradeOpen = false;
 }
+
 function showUpgradeModal() {
+    if (isUpgradeOpen) return; // prevent double-open
     const modal = document.getElementById('upgrade-modal'); if (!modal) return;
+    isUpgradeOpen = true;
     modal.classList.add('open'); document.getElementById('upgrade-overlay').classList.add('active');
     let sec = 10;
-    const timer = document.getElementById('upgrade-timer'), prog = document.getElementById('upgrade-progress-fill'), btnS = document.getElementById('btn-start-upgrade'), btnC = document.getElementById('btn-close-upgrade');
+    const timer = document.getElementById('upgrade-timer'), prog = document.getElementById('upgrade-progress-fill'), btnS = document.getElementById('btn-start-upgrade');
     timer.textContent = `${sec} сек`; prog.style.width = '0%'; btnS.disabled = false; btnS.textContent = 'Начать улучшение (🪙 100)';
     btnS.onclick = () => {
         if (playerStats.coins < 100) { btnS.textContent = 'Не хватает монет!'; return; }
@@ -398,8 +405,14 @@ function showUpgradeModal() {
             }
         }, 1000);
     };
-    const close = () => { modal.classList.remove('open'); document.getElementById('upgrade-overlay').classList.remove('active'); };
-    btnC.onclick = close; document.getElementById('upgrade-overlay').onclick = close;
+}
+
+function initUpgradeModal() {
+    const btn = document.querySelector('#screen-base .btn-primary');
+    if (btn) btn.addEventListener('click', showUpgradeModal);
+    // Persistent close handlers (set once, always work)
+    document.getElementById('btn-close-upgrade').addEventListener('click', closeUpgradeModal);
+    document.getElementById('upgrade-overlay').addEventListener('click', closeUpgradeModal);
 }
 
 // ====== Chat ======
