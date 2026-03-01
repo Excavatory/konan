@@ -111,20 +111,13 @@ function initNavigation() {
     });
 }
 
-// ====== Leaflet Map with Yandex Tiles ======
+// ====== Leaflet Map with Real Geolocation ======
 function initMap() {
     map = L.map('map', { zoomControl: false, attributionControl: false }).setView(OCHAKOVO_CENTER, 15);
 
-    // Yandex Map tiles via proxy (dark style)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 19, subdomains: 'abcd'
     }).addTo(map);
-
-    // Yandex satellite overlay (optional, adds realism)
-    // Uncomment below for Yandex Satellite tiles:
-    // L.tileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}', {
-    //     subdomains: '1234', maxZoom: 19, opacity: 0.3
-    // }).addTo(map);
 
     // District boundary
     L.polygon(DISTRICT_BOUNDS, { color: '#f5c842', weight: 2, opacity: 0.6, fillColor: '#f5c842', fillOpacity: 0.04, dashArray: '8, 6' }).addTo(map);
@@ -134,6 +127,54 @@ function initMap() {
         icon: L.divIcon({ className: 'custom-icon', html: '<div class="player-marker">🏃‍♂️</div>', iconSize: [32, 32], iconAnchor: [16, 32] }),
         zIndexOffset: 1000
     }).addTo(map);
+
+    // GPS accuracy circle
+    let accuracyCircle = null;
+
+    // Real geolocation
+    if ('geolocation' in navigator) {
+        navigator.geolocation.watchPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                const acc = pos.coords.accuracy;
+
+                // Calculate steps from distance moved
+                const moved = L.latLng(playerPos).distanceTo(L.latLng([lat, lng]));
+                if (moved > 2) { // Only count if moved > 2 meters
+                    playerStats.steps += Math.round(moved * 1.3); // ~1.3 steps per meter
+                    playerStats.coins += Math.floor(Math.random() * 2);
+                    updateHUD();
+                }
+
+                playerPos[0] = lat;
+                playerPos[1] = lng;
+                playerMarker.setLatLng(playerPos);
+                map.panTo(playerPos, { animate: true });
+
+                // Show accuracy circle
+                if (accuracyCircle) map.removeLayer(accuracyCircle);
+                accuracyCircle = L.circle(playerPos, {
+                    radius: acc,
+                    color: '#7c3aed',
+                    fillColor: '#7c3aed',
+                    fillOpacity: 0.08,
+                    weight: 1,
+                    opacity: 0.3
+                }).addTo(map);
+
+                checkDistanceToArtifacts();
+
+                // Spawn artifact near player occasionally
+                if (Math.random() < 0.05) spawnArtifact();
+            },
+            (err) => {
+                console.log('GPS недоступен, используем симуляцию:', err.message);
+                showToast('📍 GPS недоступен — используйте кнопки');
+            },
+            { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+        );
+    }
 
     spawnNPCs();
     spawnArtifact(); spawnArtifact(); spawnArtifact();
