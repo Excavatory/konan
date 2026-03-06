@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 
 <body>
@@ -259,6 +259,22 @@
                     <div class="inv-item">💎 <span>x2</span></div>
                 </div>
 
+                <div class="account-card">
+                    <div class="account-copy">
+                        <span class="account-kicker">Аккаунт</span>
+                        <h3 id="account-title">Гостевой режим</h3>
+                        <p id="account-desc">Создай аккаунт, чтобы прогресс и инвентарь восстанавливались на любом
+                            устройстве.</p>
+                        <div class="account-meta" id="account-meta">Пока прогресс хранится только на этом устройстве.
+                        </div>
+                    </div>
+                    <div class="account-actions" id="account-actions">
+                        <button class="btn-primary" id="btn-open-register">Создать аккаунт</button>
+                        <button class="btn-secondary" id="btn-open-login">Войти</button>
+                        <button class="btn-secondary" id="btn-logout" hidden>Выйти</button>
+                    </div>
+                </div>
+
                 <div class="settings-list">
                     <div class="setting-item">
                         <span>Режим невидимки</span>
@@ -304,6 +320,43 @@
         </div>
         <div id="sheet-overlay" class="sheet-overlay"></div>
 
+        <div id="auth-modal" class="bottom-sheet auth-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-content auth-sheet-content">
+                <div class="auth-header-row">
+                    <div>
+                        <div class="account-kicker">Синхронизация прогресса</div>
+                        <h2 id="auth-heading">Создать аккаунт</h2>
+                    </div>
+                    <button class="auth-close-btn" id="auth-close" aria-label="Закрыть окно входа">✕</button>
+                </div>
+                <div class="auth-mode-switch">
+                    <button class="auth-mode-btn active" id="auth-mode-register" data-auth-mode="register">Регистрация</button>
+                    <button class="auth-mode-btn" id="auth-mode-login" data-auth-mode="login">Вход</button>
+                </div>
+                <form id="auth-form" class="auth-form">
+                    <label class="auth-field" id="auth-name-field">
+                        <span>Имя игрока</span>
+                        <input type="text" id="auth-name" maxlength="16" autocomplete="nickname" placeholder="Игрок1">
+                    </label>
+                    <label class="auth-field">
+                        <span>Email</span>
+                        <input type="email" id="auth-email" autocomplete="email" placeholder="you@example.com">
+                    </label>
+                    <label class="auth-field">
+                        <span>Пароль</span>
+                        <input type="password" id="auth-password" minlength="8" autocomplete="current-password"
+                            placeholder="Минимум 8 символов">
+                    </label>
+                    <p class="auth-error" id="auth-error" hidden></p>
+                    <button class="btn-primary block" id="auth-submit" type="submit">Создать аккаунт</button>
+                </form>
+                <p class="auth-hint" id="auth-hint">Текущий локальный прогресс будет привязан к аккаунту и начнёт
+                    синхронизироваться с сервером.</p>
+            </div>
+        </div>
+        <div id="auth-overlay" class="sheet-overlay"></div>
+
         <!-- Dev Controls -->
         <div class="dev-controls" hidden>
             <button id="dev-sim-step">Шаг 🦶</button>
@@ -313,7 +366,7 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <script src="script.js?v=3"></script>
+    <script src="script.js?v=4"></script>
 </body>
 
 </html>

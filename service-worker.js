@@ -1,9 +1,9 @@
-const CACHE_NAME = 'konan-shell-v3';
+const CACHE_NAME = 'konan-shell-v4';
 const APP_SHELL = [
     './',
     './index.html',
-    './style.css?v=3',
-    './script.js?v=3',
+    './style.css?v=4',
+    './script.js?v=4',
     './favicon.svg',
     './app-icon.svg',
     './site.webmanifest'
@@ -28,6 +28,7 @@ self.addEventListener('fetch', event => {
 
     const url = new URL(event.request.url);
     const isSameOrigin = url.origin === self.location.origin;
+    if (isSameOrigin && url.pathname.startsWith('/api/')) return;
     const isRuntimeAsset = [
         'https://fonts.googleapis.com',
         'https://fonts.gstatic.com',

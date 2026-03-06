@@ -7,6 +7,7 @@ const AUTO_COLLECT_RADIUS_METERS = 10;
 const UPGRADE_COST = 100;
 const UPGRADE_DURATION_MS = 10_000;
 const MAX_CHAT_MESSAGES = 30;
+const REMOTE_SYNC_DEBOUNCE_MS = 1200;
 const DEBUG_MODE = new URLSearchParams(window.location.search).get('debug') === '1';
 
 const DISTRICT_BOUNDS = [
@@ -199,12 +200,30 @@ let npcMoveInterval = null;
 let upgradeTicker = null;
 let ambientChatInterval = null;
 let persistTimer = null;
+let remoteSyncTimer = null;
+let remoteSyncInFlight = false;
+let remoteSyncQueued = false;
 let newArtifactPing = false;
 let playerZoneStatus = isPointInDistrict(playerPos) ? 'inside' : 'outside';
+let authState = {
+    ready: false,
+    authenticated: false,
+    user: null,
+    mode: 'register',
+    syncStatus: 'local',
+    lastSyncedAt: null
+};
 let dom = {};
 
 function createDefaultState() {
+    const now = new Date().toISOString();
     return {
+        meta: {
+            schemaVersion: 2,
+            updatedAt: now,
+            lastSyncedAt: null,
+            userId: null
+        },
         player: {
             name: 'Игрок1',
             avatarSeed: 'King',
@@ -243,11 +262,18 @@ function createDefaultState() {
 }
 
 function loadGameState() {
+    return hydrateGameState(safeParseJSON(localStorage.getItem(STORAGE_KEY)));
+}
+
+function hydrateGameState(raw) {
     const defaults = createDefaultState();
-    const raw = safeParseJSON(localStorage.getItem(STORAGE_KEY));
     if (!raw) return defaults;
 
     const merged = {
+        meta: {
+            ...defaults.meta,
+            ...(raw.meta || {})
+        },
         player: {
             ...defaults.player,
             ...raw.player,
@@ -287,6 +313,16 @@ function loadGameState() {
     };
 
     return merged;
+}
+
+function commitGameState(nextState) {
+    gameState = hydrateGameState(nextState);
+    playerStats = gameState.player.stats;
+    playerPos = [...gameState.player.position];
+    artifacts = gameState.artifacts.map(hydrateArtifact);
+    currentRankingPeriod = gameState.ui.rankingFilter;
+    isStealthMode = Boolean(gameState.settings.stealth);
+    playerZoneStatus = isPointInDistrict(playerPos) ? 'inside' : 'outside';
 }
 
 function safeParseJSON(value) {
@@ -501,21 +537,42 @@ function cacheDom() {
         devStepBtn: document.getElementById('dev-sim-step'),
         devSpawnBtn: document.getElementById('dev-spawn-art'),
         devAutoBtn: document.getElementById('dev-auto-walk'),
+        accountTitle: document.getElementById('account-title'),
+        accountDesc: document.getElementById('account-desc'),
+        accountMeta: document.getElementById('account-meta'),
+        openRegisterBtn: document.getElementById('btn-open-register'),
+        openLoginBtn: document.getElementById('btn-open-login'),
+        logoutBtn: document.getElementById('btn-logout'),
+        authModal: document.getElementById('auth-modal'),
+        authOverlay: document.getElementById('auth-overlay'),
+        authClose: document.getElementById('auth-close'),
+        authHeading: document.getElementById('auth-heading'),
+        authHint: document.getElementById('auth-hint'),
+        authForm: document.getElementById('auth-form'),
+        authNameField: document.getElementById('auth-name-field'),
+        authName: document.getElementById('auth-name'),
+        authEmail: document.getElementById('auth-email'),
+        authPassword: document.getElementById('auth-password'),
+        authError: document.getElementById('auth-error'),
+        authSubmit: document.getElementById('auth-submit'),
+        authModeButtons: Array.from(document.querySelectorAll('[data-auth-mode]')),
         editProfileBtn: document.getElementById('btn-edit-profile'),
         settingsBtn: document.getElementById('btn-settings'),
         particles: document.getElementById('particles-container')
     };
 }
 
-function initApp() {
+async function initApp() {
     cacheDom();
     prepareShell();
+    await restoreSession();
     initNavigation();
     initBottomSheet();
     initRankingFilters();
     initProfileControls();
     initUpgradeModal();
     initChat();
+    initAuthUI();
     initStealth();
     initUtilityButtons();
     initMap();
@@ -532,6 +589,227 @@ function initApp() {
 
 function prepareShell() {
     if (dom.devControls) dom.devControls.hidden = !DEBUG_MODE;
+}
+
+async function restoreSession() {
+    try {
+        const data = await apiRequest('/api/auth/me', { suppressErrors: true });
+        if (data?.authenticated && data?.user && data?.state) {
+            authState.ready = true;
+            authState.authenticated = true;
+            authState.user = data.user;
+            authState.syncStatus = 'synced';
+            authState.lastSyncedAt = data.state.meta?.lastSyncedAt || null;
+            commitGameState(data.state);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+            return;
+        }
+    } catch (error) {
+        console.info('Сессия не восстановлена:', error.message);
+    }
+
+    authState.ready = true;
+    authState.authenticated = false;
+    authState.user = null;
+    authState.syncStatus = 'local';
+}
+
+function initAuthUI() {
+    dom.openRegisterBtn.addEventListener('click', () => openAuthModal('register'));
+    dom.openLoginBtn.addEventListener('click', () => openAuthModal('login'));
+    dom.logoutBtn.addEventListener('click', logoutUser);
+    dom.authClose.addEventListener('click', closeAuthModal);
+    dom.authOverlay.addEventListener('click', closeAuthModal);
+    dom.authForm.addEventListener('submit', submitAuthForm);
+    dom.authModeButtons.forEach(button => {
+        button.addEventListener('click', () => setAuthMode(button.dataset.authMode));
+    });
+
+    renderAuthUI();
+}
+
+function renderAuthUI() {
+    if (!dom.accountTitle) return;
+
+    if (authState.authenticated && authState.user) {
+        dom.accountTitle.textContent = authState.user.name;
+        dom.accountDesc.textContent = authState.user.email;
+        dom.accountMeta.textContent = getSyncMetaLabel();
+        dom.openRegisterBtn.hidden = true;
+        dom.openLoginBtn.hidden = true;
+        dom.logoutBtn.hidden = false;
+    } else {
+        dom.accountTitle.textContent = 'Гостевой режим';
+        dom.accountDesc.textContent = 'Создай аккаунт, чтобы прогресс и инвентарь восстанавливались на любом устройстве.';
+        dom.accountMeta.textContent = authState.syncStatus === 'error'
+            ? 'Сервер временно недоступен. Игра продолжает сохраняться локально.'
+            : 'Пока прогресс хранится только на этом устройстве.';
+        dom.openRegisterBtn.hidden = false;
+        dom.openLoginBtn.hidden = false;
+        dom.logoutBtn.hidden = true;
+    }
+
+    setAuthMode(authState.mode, false);
+}
+
+function getSyncMetaLabel() {
+    if (authState.syncStatus === 'syncing') return 'Сохраняем прогресс на сервер…';
+    if (authState.syncStatus === 'pending') return 'Есть локальные изменения. Готовим синхронизацию…';
+    if (authState.syncStatus === 'error') return 'Не удалось синхронизировать последнее изменение. Локальная копия сохранена.';
+    if (authState.lastSyncedAt) {
+        return `Синхронизировано: ${new Date(authState.lastSyncedAt).toLocaleString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit'
+        })}`;
+    }
+    return 'Аккаунт подключён.';
+}
+
+function setAuthMode(mode, clearError = true) {
+    authState.mode = mode === 'login' ? 'login' : 'register';
+    const isRegister = authState.mode === 'register';
+
+    dom.authModeButtons.forEach(button => button.classList.toggle('active', button.dataset.authMode === authState.mode));
+    dom.authNameField.hidden = !isRegister;
+    dom.authHeading.textContent = isRegister ? 'Создать аккаунт' : 'Войти в аккаунт';
+    dom.authSubmit.textContent = isRegister ? 'Создать аккаунт' : 'Войти';
+    dom.authHint.textContent = isRegister
+        ? 'Текущий локальный прогресс будет привязан к аккаунту и начнёт синхронизироваться с сервером.'
+        : 'Если на этом устройстве уже есть локальный прогресс, мы аккуратно подтянем его в аккаунт при входе.';
+
+    if (clearError) setAuthError('');
+}
+
+function openAuthModal(mode) {
+    setAuthMode(mode);
+    dom.authName.value = gameState.player.name || '';
+    dom.authEmail.value = authState.user?.email || '';
+    dom.authPassword.value = '';
+    dom.authModal.classList.add('open');
+    dom.authOverlay.classList.add('active');
+}
+
+function closeAuthModal() {
+    dom.authModal.classList.remove('open');
+    dom.authOverlay.classList.remove('active');
+    setAuthError('');
+    dom.authPassword.value = '';
+}
+
+function setAuthError(message) {
+    if (!message) {
+        dom.authError.hidden = true;
+        dom.authError.textContent = '';
+        return;
+    }
+
+    dom.authError.hidden = false;
+    dom.authError.textContent = message;
+}
+
+async function submitAuthForm(event) {
+    event.preventDefault();
+    setAuthError('');
+
+    const isRegister = authState.mode === 'register';
+    const email = dom.authEmail.value.trim();
+    const password = dom.authPassword.value;
+    const name = dom.authName.value.trim() || gameState.player.name;
+
+    if (isRegister && name.length < 2) {
+        setAuthError('Имя игрока должно содержать минимум 2 символа.');
+        return;
+    }
+
+    dom.authSubmit.disabled = true;
+
+    try {
+        const payload = isRegister
+            ? { email, password, name, state: cloneGameStateForNetwork() }
+            : { email, password, localState: cloneGameStateForNetwork() };
+        const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
+        const data = await apiRequest(endpoint, { method: 'POST', body: payload });
+        handleAuthSuccess(data);
+        closeAuthModal();
+        showToast(isRegister ? '🔐 Аккаунт создан и прогресс привязан.' : '🔐 Вход выполнен.');
+    } catch (error) {
+        setAuthError(error.message || 'Не удалось выполнить запрос.');
+    } finally {
+        dom.authSubmit.disabled = false;
+    }
+}
+
+function handleAuthSuccess(data) {
+    authState.ready = true;
+    authState.authenticated = true;
+    authState.user = data.user;
+    authState.syncStatus = 'synced';
+    authState.lastSyncedAt = data.state?.meta?.lastSyncedAt || new Date().toISOString();
+    commitGameState(data.state);
+    refreshMapState();
+    applyStateToUI();
+    persistGameState({ skipRemoteSync: true });
+}
+
+async function logoutUser() {
+    try {
+        await apiRequest('/api/auth/logout', { method: 'POST', suppressErrors: true });
+    } catch (error) {
+        console.info('Logout fallback:', error.message);
+    }
+
+    authState.authenticated = false;
+    authState.user = null;
+    authState.syncStatus = 'local';
+    authState.lastSyncedAt = null;
+    renderAuthUI();
+    persistGameState({ skipRemoteSync: true });
+    showToast('👋 Аккаунт отключён. Игра продолжает сохраняться локально.');
+}
+
+function refreshMapState() {
+    if (!map) return;
+
+    if (playerMarker) playerMarker.setLatLng(playerPos);
+    clearArtifactMarkers();
+    renderArtifactsOnMap();
+    map.panTo(playerPos, { animate: false });
+    updateMapStatus();
+}
+
+function clearArtifactMarkers() {
+    artifactMarkers.forEach(marker => {
+        if (map) map.removeLayer(marker);
+    });
+    artifactMarkers.clear();
+}
+
+async function apiRequest(pathname, options = {}) {
+    const response = await fetch(pathname, {
+        method: options.method || 'GET',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined
+    });
+
+    let data = null;
+    try {
+        data = await response.json();
+    } catch (error) {
+        data = null;
+    }
+
+    if (!response.ok) {
+        const message = data?.error || 'Запрос завершился ошибкой.';
+        if (!options.suppressErrors) throw new Error(message);
+        throw new Error(message);
+    }
+
+    return data;
 }
 
 function bindLifecycleEvents() {
@@ -554,7 +832,7 @@ function initNavigation() {
     });
 }
 
-function setActiveScreen(screenId, withSound) {
+function setActiveScreen(screenId, withSound, shouldPersist = true) {
     dom.tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.target === screenId));
     dom.screens.forEach(screen => screen.classList.toggle('active', screen.id === screenId));
 
@@ -566,7 +844,7 @@ function setActiveScreen(screenId, withSound) {
     if (screenId === 'screen-profile') updateProfileStats();
     if (withSound) SoundFX.play('tab');
 
-    schedulePersist();
+    if (shouldPersist) schedulePersist();
 }
 
 function initMap() {
@@ -1429,12 +1707,32 @@ function initProfileControls() {
     dom.settingsBtn.addEventListener('click', handleSettingsAction);
 }
 
-function renamePlayer() {
+async function renamePlayer() {
     const value = window.prompt('Как подписать игрока в районе?', gameState.player.name);
     if (!value) return;
 
     const nextName = value.trim().replace(/\s+/g, ' ').slice(0, 16);
     if (!nextName) return;
+
+    if (authState.authenticated) {
+        try {
+            const data = await apiRequest('/api/profile', {
+                method: 'PATCH',
+                body: { name: nextName }
+            });
+            authState.user = data.user;
+            authState.lastSyncedAt = data.state?.meta?.lastSyncedAt || new Date().toISOString();
+            authState.syncStatus = 'synced';
+            commitGameState(data.state);
+            refreshMapState();
+            applyStateToUI();
+            showToast('✏️ Имя аккаунта обновлено');
+            return;
+        } catch (error) {
+            showToast(error.message || 'Не удалось обновить имя аккаунта');
+            return;
+        }
+    }
 
     gameState.player.name = nextName;
     gameState.player.avatarSeed = nextName;
@@ -1510,10 +1808,12 @@ function applyStateToUI() {
     updateHUD();
     updateProfileStats();
     renderRanking(currentRankingPeriod);
+    renderChat();
     updateEventButtonState();
     applyStealthState(false);
     updateMapStatus();
-    setActiveScreen(gameState.ui.activeScreen, false);
+    renderAuthUI();
+    setActiveScreen(gameState.ui.activeScreen, false, false);
 
     if (gameState.ui.chatOpen && gameState.ui.activeScreen === 'screen-map') {
         dom.chatPanel.classList.add('open');
@@ -1534,12 +1834,22 @@ function schedulePersist() {
     persistTimer = setTimeout(persistGameState, 120);
 }
 
-function persistGameState() {
+function cloneGameStateForNetwork() {
+    persistGameState({ skipRemoteSync: true });
+    return typeof structuredClone === 'function'
+        ? structuredClone(gameState)
+        : JSON.parse(JSON.stringify(gameState));
+}
+
+function persistGameState(options = {}) {
     gameState.player.position = [...playerPos];
     gameState.player.stats = {
         ...playerStats,
         inventory: { ...playerStats.inventory }
     };
+    gameState.meta.updatedAt = new Date().toISOString();
+    gameState.meta.userId = authState.user?.id || null;
+    gameState.meta.lastSyncedAt = authState.lastSyncedAt || null;
     gameState.settings.stealth = isStealthMode;
     gameState.ui.rankingFilter = currentRankingPeriod;
     gameState.ui.chatOpen = dom.chatPanel?.classList.contains('open') || false;
@@ -1547,6 +1857,59 @@ function persistGameState() {
     gameState.messages = gameState.messages.slice(-MAX_CHAT_MESSAGES);
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+
+    if (authState.authenticated && !options.skipRemoteSync) scheduleRemoteSync();
 }
 
-document.addEventListener('DOMContentLoaded', initApp);
+function scheduleRemoteSync() {
+    if (!authState.authenticated) return;
+
+    authState.syncStatus = remoteSyncInFlight ? 'syncing' : 'pending';
+    renderAuthUI();
+    remoteSyncQueued = true;
+    clearTimeout(remoteSyncTimer);
+    remoteSyncTimer = setTimeout(() => {
+        syncProgressToServer();
+    }, REMOTE_SYNC_DEBOUNCE_MS);
+}
+
+async function syncProgressToServer() {
+    if (!authState.authenticated) return;
+    if (remoteSyncInFlight) {
+        remoteSyncQueued = true;
+        return;
+    }
+
+    remoteSyncInFlight = true;
+    remoteSyncQueued = false;
+    authState.syncStatus = 'syncing';
+    renderAuthUI();
+
+    try {
+        const data = await apiRequest('/api/progress', {
+            method: 'PUT',
+            body: { state: cloneGameStateForNetwork() },
+            suppressErrors: true
+        });
+        if (data?.state) {
+            authState.lastSyncedAt = data.state.meta?.lastSyncedAt || new Date().toISOString();
+            authState.syncStatus = 'synced';
+            commitGameState(data.state);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+        }
+    } catch (error) {
+        authState.syncStatus = 'error';
+        console.info('Sync failed:', error.message);
+    } finally {
+        remoteSyncInFlight = false;
+        renderAuthUI();
+        if (remoteSyncQueued) scheduleRemoteSync();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initApp().catch(error => {
+        console.error(error);
+        showToast('Сервис аккаунтов не инициализировался полностью.');
+    });
+});

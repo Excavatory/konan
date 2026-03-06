@@ -924,6 +924,56 @@ body {
     gap: 15px;
 }
 
+.account-card {
+    background: linear-gradient(180deg, rgba(124, 58, 237, 0.12), rgba(15, 23, 42, 0.58));
+    border: 1px solid rgba(124, 58, 237, 0.28);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-heavy);
+}
+
+.account-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.account-kicker {
+    color: var(--accent-purple);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.account-card h3 {
+    font-size: 22px;
+}
+
+.account-card p {
+    color: var(--text-sec);
+    line-height: 1.45;
+}
+
+.account-meta {
+    color: var(--accent-gold);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.account-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.account-actions .btn-primary,
+.account-actions .btn-secondary {
+    flex: 1 1 160px;
+}
+
 .setting-item {
     display: flex;
     justify-content: space-between;
@@ -1377,6 +1427,107 @@ input:checked+.slider:before {
     min-width: 60px;
 }
 
+.auth-sheet {
+    z-index: 450;
+}
+
+#auth-overlay {
+    z-index: 440;
+}
+
+.auth-sheet-content {
+    align-items: stretch;
+    text-align: left;
+    gap: 16px;
+}
+
+.auth-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.auth-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-sec);
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.auth-mode-switch {
+    display: flex;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 16px;
+    padding: 4px;
+}
+
+.auth-mode-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text-sec);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-family: var(--font-fam);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.auth-mode-btn.active {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+}
+
+.auth-field input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    color: white;
+    font-family: var(--font-fam);
+    font-size: 15px;
+    outline: none;
+}
+
+.auth-field input:focus {
+    border-color: var(--accent-purple);
+}
+
+.auth-error {
+    background: rgba(239, 68, 68, 0.12);
+    color: #fecaca;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-size: 14px;
+}
+
+.auth-hint {
+    color: var(--text-sec);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
 /* ====== Chat ====== */
 .chat-toggle-btn {
     position: absolute;
@@ -1796,6 +1947,25 @@ input:checked+.slider:before {
         padding-bottom: 20px;
     }
 
+    .account-card {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .account-card h3 {
+        font-size: 20px;
+    }
+
+    .account-actions {
+        flex-direction: column;
+    }
+
+    .account-actions .btn-primary,
+    .account-actions .btn-secondary {
+        flex-basis: auto;
+        width: 100%;
+    }
+
     /* Profile must have extra padding so "Настройки" isn't behind tab bar */
     #screen-profile .screen-content {
         padding-bottom: 80px;
@@ -1859,6 +2029,14 @@ input:checked+.slider:before {
     .bottom-sheet {
         padding: 20px;
         padding-bottom: calc(20px + var(--safe-bottom));
+    }
+
+    .auth-header-row {
+        align-items: center;
+    }
+
+    .auth-close-btn {
+        font-size: 22px;
     }
 
     .artifact-icon-large {
