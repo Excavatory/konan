@@ -82,6 +82,46 @@ body {
     z-index: 1;
 }
 
+.map-fallback,
+.map-status {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 120;
+    width: min(92%, 420px);
+    border-radius: 18px;
+    padding: 12px 16px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--panel-border);
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.4;
+    box-shadow: var(--shadow-heavy);
+}
+
+.map-fallback {
+    top: 100px;
+    background: rgba(13, 15, 26, 0.96);
+    color: white;
+}
+
+.map-status {
+    top: calc(env(safe-area-inset-top, 20px) + 64px);
+    color: white;
+    background: rgba(13, 15, 26, 0.78);
+}
+
+.map-status[data-tone="warning"] {
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #fee2e2;
+}
+
+.map-status[data-tone="info"] {
+    border-color: rgba(124, 58, 237, 0.45);
+    color: #ede9fe;
+}
+
 /* ====== HUD Overlay ====== */
 .hud {
     position: absolute;
@@ -271,10 +311,13 @@ body {
     display: none;
 }
 
-.btn-event.blinking {
+.btn-event.visible {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.btn-event.blinking {
     animation: emergency-blink 1s infinite alternate;
 }
 
@@ -1278,6 +1321,10 @@ input:checked+.slider:before {
     transform: translateX(-50%) translateY(0);
 }
 
+.dev-controls[hidden] {
+    display: none !important;
+}
+
 /* ====== Upgrade Modal ====== */
 .upgrade-sheet {
     z-index: 410;
@@ -1583,6 +1630,13 @@ input:checked+.slider:before {
         width: 40px;
         height: 40px;
         font-size: 18px;
+    }
+
+    .map-status,
+    .map-fallback {
+        width: calc(100% - 20px);
+        font-size: 12px;
+        padding: 10px 12px;
     }
 
     /* --- Ranking --- */

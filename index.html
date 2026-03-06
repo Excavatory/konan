@@ -6,11 +6,18 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Очаково-Матвеевский: Царь горы</title>
+    <meta name="description"
+        content="Мобильная карта-игра про Очаково-Матвеевский: исследуй район, собирай артефакты и становись Царём горы.">
+    <meta name="theme-color" content="#0d0f1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="manifest" href="site.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 
 <body>
@@ -62,21 +69,25 @@
         <!-- Main Map Screen -->
         <main id="screen-map" class="screen active">
             <div id="map"></div>
+            <div id="map-fallback" class="map-fallback" hidden>Карта временно недоступна. Проверь подключение и
+                перезагрузи страницу.</div>
+            <div id="map-status" class="map-status" hidden aria-live="polite"></div>
 
             <!-- HUD Overlay -->
             <div class="hud">
                 <div class="hud-top">
                     <div class="player-info">
                         <div class="avatar-container">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=King" alt="Avatar" class="avatar">
-                            <div class="level-badge">12</div>
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=King" alt="Аватар игрока"
+                                class="avatar" id="top-avatar">
+                            <div class="level-badge" id="top-level-badge">12</div>
                         </div>
                         <div class="name-prestige">
-                            <span class="player-name">Игрок1</span>
+                            <span class="player-name" id="top-player-name">Игрок1</span>
                             <span class="prestige">⭐ 1 240</span>
                         </div>
                     </div>
-                    <button class="btn-icon btn-stealth" title="Невидимка">👁</button>
+                    <button class="btn-icon btn-stealth" title="Невидимка" aria-label="Переключить режим невидимки">👁</button>
                 </div>
 
                 <div class="hud-bottom-dock">
@@ -85,30 +96,31 @@
                         <div class="pill coins">🪙 580</div>
                         <div class="pill crystals">💎 12</div>
                     </div>
-                    <button class="btn-scanner" id="btn-scanner">
+                    <button class="btn-scanner" id="btn-scanner" aria-label="Сканировать район">
                         <span class="scanner-icon">📡</span>
                     </button>
                 </div>
 
-                <button class="btn-event blinking" id="btn-event">
+                <button class="btn-event" id="btn-event" aria-label="Открыть ближайшее событие">
                     <span>!</span>
                 </button>
             </div>
 
             <!-- Chat Toggle Button -->
-            <button class="chat-toggle-btn" id="chat-toggle">💬</button>
+            <button class="chat-toggle-btn" id="chat-toggle" aria-label="Открыть чат района">💬</button>
         </main>
 
         <!-- Chat Panel -->
         <div id="chat-panel" class="chat-panel">
             <div class="chat-header">
                 <span>💬 Чат района</span>
-                <button id="chat-close" class="chat-close-btn">✕</button>
+                <button id="chat-close" class="chat-close-btn" aria-label="Закрыть чат">✕</button>
             </div>
             <div id="chat-messages" class="chat-messages"></div>
             <div class="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Сообщение..." autocomplete="off">
-                <button id="chat-send" class="chat-send-btn">➤</button>
+                <input type="text" id="chat-input" placeholder="Сообщение..." autocomplete="off" maxlength="140"
+                    aria-label="Поле сообщения">
+                <button id="chat-send" class="chat-send-btn" aria-label="Отправить сообщение">➤</button>
             </div>
         </div>
 
@@ -116,12 +128,12 @@
         <main id="screen-base" class="screen">
             <div class="screen-content">
                 <header class="screen-header">
-                    <h2>Моя база <span class="badge">Ур. 3</span></h2>
+                    <h2>Моя база <span class="badge" id="base-level-badge">Ур. 3</span></h2>
                     <div class="progress-bar">
-                        <div class="progress" style="width: 60%"></div>
+                        <div class="progress" id="base-progress-fill" style="width: 60%"></div>
                     </div>
                 </header>
-                <div class="base-view">
+                <div class="base-view" id="base-view">
                     <div class="slot filled">
                         <span class="slot-icon">🛋️</span>
                         <span class="slot-label">Диван</span>
@@ -138,12 +150,12 @@
                     <div class="slot empty"><span>+</span></div>
                     <div class="slot empty"><span>+</span></div>
                 </div>
-                <div class="resources-panel">
+                <div class="resources-panel" id="base-resources">
                     <div class="res-item">🧱 24</div>
                     <div class="res-item">🪵 10</div>
                     <div class="res-item">⚙️ 6</div>
                 </div>
-                <button class="btn-primary block">Улучшить квартиру</button>
+                <button class="btn-primary block" id="btn-open-upgrade">Улучшить квартиру</button>
             </div>
         </main>
 
@@ -163,13 +175,10 @@
                 </div>
                 <button class="btn-primary block" id="btn-start-upgrade">Начать улучшение (🪙 100)</button>
                 <button class="btn-secondary block" id="btn-close-upgrade"
-                    style="margin-top:10px;position:relative;z-index:999"
-                    onclick="document.getElementById('upgrade-modal').classList.remove('open');document.getElementById('upgrade-overlay').classList.remove('active');isUpgradeOpen=false">Закрыть</button>
+                    style="margin-top:10px;position:relative;z-index:999">Закрыть</button>
             </div>
         </div>
-        <div id="upgrade-overlay" class="sheet-overlay"
-            onclick="document.getElementById('upgrade-modal').classList.remove('open');this.classList.remove('active');isUpgradeOpen=false">
-        </div>
+        <div id="upgrade-overlay" class="sheet-overlay"></div>
 
         <!-- Leaderboard Screen -->
         <main id="screen-ranking" class="screen">
@@ -207,13 +216,15 @@
         <main id="screen-profile" class="screen">
             <div class="screen-content">
                 <header class="profile-header">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=King" class="avatar large">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=King" class="avatar large"
+                        id="profile-avatar" alt="Профиль игрока">
                     <div class="profile-info">
-                        <h2>Игрок1 <button class="btn-edit">✏️</button></h2>
+                        <h2><span id="profile-name">Игрок1</span> <button class="btn-edit" id="btn-edit-profile"
+                                aria-label="Изменить имя игрока">✏️</button></h2>
                         <div class="level-progress">
-                            <span>Ур. 12</span>
+                            <span id="profile-level-label">Ур. 12</span>
                             <div class="progress-bar small">
-                                <div class="progress" style="width: 80%"></div>
+                                <div class="progress" id="profile-level-progress" style="width: 80%"></div>
                             </div>
                         </div>
                     </div>
@@ -253,7 +264,7 @@
                         <span>Режим невидимки</span>
                         <label class="switch"><input type="checkbox"><span class="slider"></span></label>
                     </div>
-                    <button class="btn-secondary block">Настройки</button>
+                    <button class="btn-secondary block" id="btn-settings">Настройки</button>
                 </div>
             </div>
         </main>
@@ -286,14 +297,15 @@
                 <h2 id="artifact-title">Кристалл силы</h2>
                 <div class="artifact-type" id="artifact-type">Редкий артефакт</div>
                 <div class="artifact-bonus" id="artifact-bonus">+150 Престижа</div>
-                <div class="artifact-distance" id="artifact-distance">Расстояние: <span>8 м</span></div>
+                <div class="artifact-distance" id="artifact-distance">Расстояние: <span id="artifact-distance-value">8
+                        м</span></div>
                 <button class="btn-primary block" id="btn-collect">Подобрать</button>
             </div>
         </div>
         <div id="sheet-overlay" class="sheet-overlay"></div>
 
         <!-- Dev Controls -->
-        <div class="dev-controls">
+        <div class="dev-controls" hidden>
             <button id="dev-sim-step">Шаг 🦶</button>
             <button id="dev-spawn-art">Спавн 🎁</button>
             <button id="dev-auto-walk">▶️ Авто</button>
@@ -301,7 +313,7 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <script src="script.js?v=2"></script>
+    <script src="script.js?v=3"></script>
 </body>
 
 </html>

@@ -1,0 +1,19 @@
+{
+  "name": "Царь горы",
+  "short_name": "Царь горы",
+  "description": "Исследуй Очаково-Матвеевский, собирай артефакты и стань Царём горы.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d0f1a",
+  "theme_color": "#0d0f1a",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
